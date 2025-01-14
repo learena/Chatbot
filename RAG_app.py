@@ -323,10 +323,6 @@ def sidebar_and_documentChooser():
                                 embedding_function=embeddings,
                                 persist_directory=selected_vectorstore_path,
                             )
-                        st.session_state.vector_store = Chroma(
-                            embedding_function=embeddings,
-                            persist_directory=selected_vectorstore_path,
-                        )
 
                         # Create retriever
                         st.session_state.retriever = create_retriever(
