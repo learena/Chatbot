@@ -239,7 +239,7 @@ def sidebar_and_documentChooser():
             f"Seleziona tipo di retriever", retrievers
         )
         st.write("")
-        if st.session_state.retriever_type == list_retriever_types[0]:  # Cohere
+        if st.session_state.retriever_type == list_retriever_types[1]:  # Cohere
             st.session_state.cohere_api_key = st.text_input(
                 "Inserisci chiave Cohere API - [Cohere API key](https://dashboard.cohere.com/api-keys)",
                 type="password",
