@@ -185,10 +185,6 @@ def expander_model_parameters(
         )
 
 
-import os
-import streamlit as st
-from chromadb import Chroma
-
 # Assuming select_embeddings_model() and create_retriever() are defined elsewhere
 
 def sidebar_and_documentChooser():
