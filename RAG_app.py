@@ -66,10 +66,6 @@ from langchain_community.document_transformers import (
 from langchain.retrievers.document_compressors import EmbeddingsFilter
 from langchain.retrievers import ContextualCompressionRetriever
 
-
-# GitPython for pushing vectorstores to GitHub
-from git import Repo
-
 # Cohere
 from langchain.retrievers.document_compressors import CohereRerank
 from langchain_community.llms import Cohere
@@ -365,36 +361,6 @@ def sidebar_and_documentChooser():
                     st.error(e)
             else:
                 st.warning("Per favore inserisci un nome valido per il Vectorstore.")
-
-def push_vectorstore_to_github(vectorstore_path, commit_message="Updated vectorstore"):
-    """
-    Pushes the vectorstore directory to a GitHub repository using GitPython.
-
-    Parameters:
-        vectorstore_path (str): Path to the vectorstore directory.
-        commit_message (str): Commit message for the update.
-    """
-    try:
-        # Initialize the repository
-        repo = Repo(vectorstore_path)
-        
-        # Check for changes
-        if repo.is_dirty() or repo.untracked_files:
-            # Stage all changes
-            repo.git.add(A=True)
-            
-            # Commit the changes
-            repo.index.commit(commit_message)
-            
-            # Push to the remote repository
-            origin = repo.remote(name='origin')
-            origin.push()
-            print("Vectorstore successfully pushed to GitHub.")
-        else:
-            print("No changes detected in the vectorstore.")
-
-    except Exception as e:
-        print(f"Error pushing vectorstore to GitHub: {e}")
 
 ####################################################################
 #        Process documents and create vectorstor (Chroma dB)
@@ -740,12 +706,6 @@ def chain_RAG_blocks():
                             retriever=st.session_state.retriever,
                             chain_type="stuff",
                             language=st.session_state.assistant_language,
-                        )
-
-                        # 7. Push vectorstore to GitHub
-                        push_vectorstore_to_github(
-                            vectorstore_path=persist_directory,
-                            commit_message=f"Updated vectorstore: {st.session_state.vector_store_name}"
                         )
 
                         # 9. Cclear chat_history
