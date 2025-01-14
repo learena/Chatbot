@@ -1,6 +1,3 @@
-Git
-GitDB
-typing_extensions >= 3.7.3.4
 GitPython
 aiohttp==3.9.3
 aiosignal==1.3.1
