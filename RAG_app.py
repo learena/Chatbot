@@ -105,20 +105,12 @@ list_retriever_types = [
     "Contextual compression",
 ]
 
-
-#TMP_DIR = Path(__file__).resolve().parent.joinpath("data", "tmp")
-#LOCAL_VECTOR_STORE_DIR = Path("data/vector_stores")
-#LOCAL_VECTOR_STORE_DIR.mkdir(parents=True, exist_ok=True)
-#LOCAL_VECTOR_STORE_DIR = (
-#    Path(__file__).resolve().parent.joinpath("data", "vector_stores")
-#   "/data/vector_stores"
-#)
-#TMP_DIR.mkdir(parents=True, exist_ok=True)
-#LOCAL_VECTOR_STORE_DIR.mkdir(parents=True, exist_ok=True)
-
-root = os.path.abspath(os.path.dirname(__file__))
-LOCAL_VECTOR_STORE_DIR=os.path.join(root,'data/vector_stores')
-TMP_DIR=os.path.join(root,'data/tmp')
+TMP_DIR = Path(__file__).resolve().parent.joinpath("data", "tmp")
+LOCAL_VECTOR_STORE_DIR = (
+    Path(__file__).resolve().parent.joinpath("data", "vector_stores")
+)
+TMP_DIR.mkdir(parents=True, exist_ok=True)
+LOCAL_VECTOR_STORE_DIR.mkdir(parents=True, exist_ok=True)
 
 ####################################################################
 #            Create app interface with streamlit
@@ -192,8 +184,6 @@ def expander_model_parameters(
             step=0.05,
         )
 
-
-# Assuming select_embeddings_model() and create_retriever() are defined elsewhere
 
 def sidebar_and_documentChooser():
     """Create the sidebar and a tabbed pane: the first tab contains a document chooser (create a new vectorstore);
@@ -330,7 +320,7 @@ def sidebar_and_documentChooser():
                         # Load Chroma vectorstore
                         embeddings = select_embeddings_model()
                         selected_vectorstore_path = os.path.join(
-                            LOCAL_VECTOR_STORE_DIR,
+                            LOCAL_VECTOR_STORE_DIR.as_posix(),
                             st.session_state.selected_vectorstore_name,
                         )
                         st.session_state.vector_store = Chroma(
@@ -372,14 +362,12 @@ def sidebar_and_documentChooser():
             else:
                 st.warning("Per favore inserisci un nome valido per il Vectorstore.")
 
-
-
 ####################################################################
 #        Process documents and create vectorstor (Chroma dB)
 ####################################################################
 def delte_temp_files():
     """delete files from the './data/tmp' folder"""
-    files = glob.glob(TMP_DIR + "/*")
+    files = glob.glob(TMP_DIR.as_posix() + "/*")
     for f in files:
         try:
             os.remove(f)
@@ -396,23 +384,23 @@ def langchain_document_loader():
     documents = []
 
     txt_loader = DirectoryLoader(
-        TMP_DIR, glob="**/*.txt", loader_cls=TextLoader, show_progress=True
+        TMP_DIR.as_posix(), glob="**/*.txt", loader_cls=TextLoader, show_progress=True
     )
     documents.extend(txt_loader.load())
 
     pdf_loader = DirectoryLoader(
-        TMP_DIR, glob="**/*.pdf", loader_cls=PyPDFLoader, show_progress=True
+        TMP_DIR.as_posix(), glob="**/*.pdf", loader_cls=PyPDFLoader, show_progress=True
     )
     documents.extend(pdf_loader.load())
 
     csv_loader = DirectoryLoader(
-        TMP_DIR, glob="**/*.csv", loader_cls=CSVLoader, show_progress=True,
+        TMP_DIR.as_posix(), glob="**/*.csv", loader_cls=CSVLoader, show_progress=True,
         loader_kwargs={"encoding":"utf8"}
     )
     documents.extend(csv_loader.load())
 
     doc_loader = DirectoryLoader(
-        TMP_DIR,
+        TMP_DIR.as_posix(),
         glob="**/*.docx",
         loader_cls=Docx2txtLoader,
         show_progress=True,
@@ -656,7 +644,7 @@ def chain_RAG_blocks():
                         error_message = ""
                         try:
                             temp_file_path = os.path.join(
-                                TMP_DIR, uploaded_file.name
+                                TMP_DIR.as_posix(), uploaded_file.name
                             )
                             with open(temp_file_path, "wb") as temp_file:
                                 temp_file.write(uploaded_file.read())
@@ -682,7 +670,7 @@ def chain_RAG_blocks():
 
                     # 6. Create a vectorstore
                     persist_directory = (
-                        LOCAL_VECTOR_STORE_DIR
+                        LOCAL_VECTOR_STORE_DIR.as_posix()
                         + "/"
                         + st.session_state.vector_store_name
                     )
