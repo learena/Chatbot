@@ -675,7 +675,7 @@ def chain_RAG_blocks():
 
                     # 6. Create a vectorstore
                     persist_directory = (
-                        LOCAL_VECTOR_STORE_DIR.as_posix()
+                        LOCAL_VECTOR_STORE_DIR
                         + "/"
                         + st.session_state.vector_store_name
                     )
