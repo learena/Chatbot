@@ -318,11 +318,11 @@ def sidebar_and_documentChooser():
                 try:
                     with st.spinner("Caricamento vectorstore..."):
                         # Load Chroma vectorstore
-                        embeddings = select_embeddings_model()
-                        selected_vectorstore_path = os.path.join(
-                            LOCAL_VECTOR_STORE_DIR.as_posix(),
-                            st.session_state.selected_vectorstore_name,
-                        )
+                            embeddings = select_embeddings_model()
+                            st.session_state.vector_store = Chroma(
+                                embedding_function=embeddings,
+                                persist_directory=selected_vectorstore_path,
+                            )
                         st.session_state.vector_store = Chroma(
                             embedding_function=embeddings,
                             persist_directory=selected_vectorstore_path,
