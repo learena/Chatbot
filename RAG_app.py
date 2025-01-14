@@ -115,6 +115,8 @@ LOCAL_VECTOR_STORE_DIR.mkdir(parents=True, exist_ok=True)
 #TMP_DIR.mkdir(parents=True, exist_ok=True)
 #LOCAL_VECTOR_STORE_DIR.mkdir(parents=True, exist_ok=True)
 
+selected_vectorstore_path = LOCAL_VECTOR_STORE_DIR / "my_vectorstore"
+
 ####################################################################
 #            Create app interface with streamlit
 ####################################################################
