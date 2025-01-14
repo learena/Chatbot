@@ -178,8 +178,8 @@ def expander_model_parameters(
 
 
 def sidebar_and_documentChooser():
-    """Create the sidebar and the a tabbed pane: the first tab contains a document chooser (create a new vectorstore);
-    the second contains a vectorstore chooser (open an old vectorstore)."""
+    """Create the sidebar and a tabbed pane: the first tab contains a document chooser (create a new vectorstore);
+    the second contains a vectorstore chooser (open an existing vectorstore)."""
 
     with st.sidebar:
         st.caption(
@@ -214,12 +214,7 @@ def sidebar_and_documentChooser():
                 text_input_API_key="Inserisci chiave Google API - [Google API Key](https://makersuite.google.com/app/apikey)",
                 list_models=["gemini-pro"],
             )
-        # if llm_chooser == list_LLM_providers[2]:
-        #     expander_model_parameters(
-        #         LLM_provider="HuggingFace",
-        #         text_input_API_key="HuggingFace API key - [Get an API key](https://huggingface.co/settings/tokens)",
-        #         list_models=["mistralai/Mistral-7B-Instruct-v0.2"],
-        #     )
+
         # Assistant language
         st.write("")
         st.session_state.assistant_language = st.selectbox(
@@ -230,8 +225,6 @@ def sidebar_and_documentChooser():
         st.subheader("Retriever")
         retrievers = list_retriever_types
         if st.session_state.selected_model == "gpt-3.5-turbo":
-            # for "gpt-3.5-turbo", we will not use the vectorstore backed retriever
-            # there is a high risk of exceeding the max tokens limit (4096).
             retrievers = list_retriever_types[:-1]
 
         st.session_state.retriever_type = st.selectbox(
@@ -246,19 +239,13 @@ def sidebar_and_documentChooser():
                 placeholder="Inserisci chiave Cohere API",
             )
 
-        # st.write("\n\n")
-        # st.write(
-        #     f"ℹ _Your {st.session_state.LLM_provider} API key, '{st.session_state.selected_model}' parameters, \
-        #     and {st.session_state.retriever_type} are only considered when loading or creating a vectorstore._"
-        # )
-
     # Tabbed Pane: Create a new Vectorstore | Open a saved Vectorstore
-
     tab_new_vectorstore, tab_open_vectorstore = st.tabs(
         ["Crea un nuovo Vectorstore", "Seleziona un Vectorstore esistente"]
     )
+
     with tab_new_vectorstore:
-        # 1. Select documnets
+        # 1. Select documents
         st.session_state.uploaded_file_list = st.file_uploader(
             label="**Seleziona documenti**",
             accept_multiple_files=True,
@@ -269,8 +256,7 @@ def sidebar_and_documentChooser():
             label="**I documenti saranno caricati e salvati in un vectorstore (Chroma dB). Inserisci un nome valido**",
             placeholder="Nome Vectorstore",
         )
-        # 3. Add a button to process documnets and create a Chroma vectorstore
-
+        # 3. Add a button to process documents and create a Chroma vectorstore
         st.button("Crea Vectorstore", on_click=chain_RAG_blocks)
         try:
             if st.session_state.error_message != "":
@@ -279,20 +265,16 @@ def sidebar_and_documentChooser():
             pass
 
     with tab_open_vectorstore:
-        # Open a saved Vectorstore
-        # https://github.com/streamlit/streamlit/issues/1019
+        # Replace tkinter file dialog with Streamlit input for directory name
         st.write("Seleziona un Vectorstore:")
-        import tkinter as tk
-        from tkinter import filedialog
 
-        clicked = st.button("Selettore Vectorstore")
-        root = tk.Tk()
-        root.withdraw()
-        root.wm_attributes("-topmost", 1)  # Make dialog appear on top of other windows
+        # Text input for vectorstore path
+        st.session_state.selected_vectorstore_name = st.text_input(
+            "Inserisci il percorso del Vectorstore",
+            placeholder="Inserisci il percorso o nome del Vectorstore salvato",
+        )
 
-        st.session_state.selected_vectorstore_name = ""
-
-        if clicked:
+        if st.button("Carica Vectorstore"):
             # Check inputs
             error_messages = []
             if (
@@ -323,59 +305,54 @@ def sidebar_and_documentChooser():
                 )
                 st.warning(st.session_state.error_message)
 
-            # if API keys are inserted, start loading Chroma index, then create retriever and ConversationalRetrievalChain
-            else:
-                selected_vectorstore_path = filedialog.askdirectory(master=root)
-
-                if selected_vectorstore_path == "":
-                    st.info("Seleziona un path valido")
-
-                else:
+            # Load Vectorstore if inputs are valid
+            elif st.session_state.selected_vectorstore_name:
+                try:
                     with st.spinner("Caricamento vectorstore..."):
-                        st.session_state.selected_vectorstore_name = (
-                            selected_vectorstore_path.split("/")[-1]
+                        # Load Chroma vectorstore
+                        embeddings = select_embeddings_model()
+                        selected_vectorstore_path = os.path.join(
+                            LOCAL_VECTOR_STORE_DIR.as_posix(),
+                            st.session_state.selected_vectorstore_name,
                         )
-                        try:
-                            # 1. load Chroma vectorestore
-                            embeddings = select_embeddings_model()
-                            st.session_state.vector_store = Chroma(
-                                embedding_function=embeddings,
-                                persist_directory=selected_vectorstore_path,
-                            )
+                        st.session_state.vector_store = Chroma(
+                            embedding_function=embeddings,
+                            persist_directory=selected_vectorstore_path,
+                        )
 
-                            # 2. create retriever
-                            st.session_state.retriever = create_retriever(
-                                vector_store=st.session_state.vector_store,
-                                embeddings=embeddings,
-                                retriever_type=st.session_state.retriever_type,
-                                base_retriever_search_type="similarity",
-                                base_retriever_k=16,
-                                compression_retriever_k=20,
-                                cohere_api_key=st.session_state.cohere_api_key,
-                                cohere_model="rerank-multilingual-v2.0",
-                                cohere_top_n=10,
-                            )
+                        # Create retriever
+                        st.session_state.retriever = create_retriever(
+                            vector_store=st.session_state.vector_store,
+                            embeddings=embeddings,
+                            retriever_type=st.session_state.retriever_type,
+                            base_retriever_search_type="similarity",
+                            base_retriever_k=16,
+                            compression_retriever_k=20,
+                            cohere_api_key=st.session_state.cohere_api_key,
+                            cohere_model="rerank-multilingual-v2.0",
+                            cohere_top_n=10,
+                        )
 
-                            # 3. create memory and ConversationalRetrievalChain
-                            (
-                                st.session_state.chain,
-                                st.session_state.memory,
-                            ) = create_ConversationalRetrievalChain(
-                                retriever=st.session_state.retriever,
-                                chain_type="stuff",
-                                language=st.session_state.assistant_language,
-                            )
+                        # Create memory and ConversationalRetrievalChain
+                        (
+                            st.session_state.chain,
+                            st.session_state.memory,
+                        ) = create_ConversationalRetrievalChain(
+                            retriever=st.session_state.retriever,
+                            chain_type="stuff",
+                            language=st.session_state.assistant_language,
+                        )
 
-                            # 4. clear chat_history
-                            clear_chat_history()
+                        # Clear chat history
+                        clear_chat_history()
 
-                            st.info(
-                                f"**{st.session_state.selected_vectorstore_name}** è stato caricato con successo"
-                            )
-
-                        except Exception as e:
-                            st.error(e)
-
+                        st.info(
+                            f"**{st.session_state.selected_vectorstore_name}** è stato caricato con successo"
+                        )
+                except Exception as e:
+                    st.error(e)
+            else:
+                st.warning("Per favore inserisci un nome valido per il Vectorstore.")
 
 ####################################################################
 #        Process documents and create vectorstor (Chroma dB)
