@@ -13,6 +13,8 @@ from pathlib import Path
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from langchain.vectorstores import FAISS
+from langchain.embeddings.openai import OpenAIEmbeddings
 
 # langchain prompts, memory, chains...
 from langchain.prompts import PromptTemplate, ChatPromptTemplate
@@ -428,72 +430,16 @@ def select_embeddings_model():
     return embeddings
 
 
-def create_retriever(
-    vector_store,
-    embeddings,
-    retriever_type="Contextual compression",
-    base_retriever_search_type="semilarity",
-    base_retriever_k=16,
-    compression_retriever_k=20,
-    cohere_api_key="",
-    cohere_model="rerank-multilingual-v2.0",
-    cohere_top_n=10,
-):
-    """
-    create a retriever which can be a:
-        - Vectorstore backed retriever: this is the base retriever.
-        - Contextual compression retriever: We wrap the the base retriever in a ContextualCompressionRetriever.
-            The compressor here is a Document Compressor Pipeline, which splits documents
-            to smaller chunks, removes redundant documents, filters the top relevant documents,
-            and reorder the documents so that the most relevant are at beginning / end of the list.
-        - Cohere_reranker: CohereRerank endpoint is used to reorder the results based on relevance.
-
-    Parameters:
-        vector_store: Chroma vector database.
-        embeddings: OpenAIEmbeddings or GoogleGenerativeAIEmbeddings.
-
-        retriever_type (str): in [Vectorstore backed retriever,Contextual compression,Cohere reranker]. default = Cohere reranker
-
-        base_retreiver_search_type: search_type in ["similarity", "mmr", "similarity_score_threshold"], default = similarity.
-        base_retreiver_k: The most similar vectors are returned (default k = 16).
-
-        compression_retriever_k: top k documents returned by the compression retriever, default = 20
-
-        cohere_api_key: Cohere API key
-        cohere_model (str): model used by Cohere, in ["rerank-multilingual-v2.0","rerank-english-v2.0"]
-        cohere_top_n: top n documents returned bu Cohere, default = 10
-
-    """
-
-    base_retriever = Vectorstore_backed_retriever(
-        vectorstore=vector_store,
-        search_type=base_retriever_search_type,
-        k=base_retriever_k,
-        score_threshold=None,
-    )
-
+def create_retriever(vector_store, embeddings, retriever_type="Vectorstore backed retriever"):
+    """Create a FAISS retriever."""
     if retriever_type == "Vectorstore backed retriever":
-        return base_retriever
-
-    elif retriever_type == "Contextual compression":
-        compression_retriever = create_compression_retriever(
-            embeddings=embeddings,
-            base_retriever=base_retriever,
-            k=compression_retriever_k,
-        )
-        return compression_retriever
-
-    elif retriever_type == "Cohere reranker":
-        cohere_retriever = CohereRerank_retriever(
-            base_retriever=base_retriever,
-            cohere_api_key=cohere_api_key,
-            cohere_model=cohere_model,
-            top_n=cohere_top_n,
-        )
-        return cohere_retriever
+        return vector_store.as_retriever(search_type="similarity", search_kwargs={"k": 10})
     else:
-        pass
-
+        st.error("FAISS currently supports only 'Vectorstore backed retriever'.")
+        return None
+def load_faiss_vectorstore(vectorstore_name, embeddings):
+    vector_store_path = f"data/{vectorstore_name}"
+    return FAISS.load_local(vector_store_path, embeddings)
 
 def Vectorstore_backed_retriever(
     vectorstore, search_type="similarity", k=4, score_threshold=None
@@ -588,28 +534,12 @@ def CohereRerank_retriever(
 
 
 def chain_RAG_blocks():
-    """The RAG system is composed of:
-    - 1. Retrieval: includes document loaders, text splitter, vectorstore and retriever.
-    - 2. Memory.
-    - 3. Converstaional Retreival chain.
-    """
+    """Process documents and create a FAISS vector store."""
     with st.spinner("Creating vectorstore..."):
         # Check inputs
         error_messages = []
-        if (
-            not st.session_state.openai_api_key
-            and not st.session_state.google_api_key
-            and not st.session_state.hf_api_key
-        ):
-            error_messages.append(
-                f"Inserisci la tua chiave {st.session_state.LLM_provider} API"
-            )
-
-        if (
-            st.session_state.retriever_type == list_retriever_types[0]
-            and not st.session_state.cohere_api_key
-        ):
-            error_messages.append(f"Inserisci la tua chiave Cohere API")
+        if not st.session_state.openai_api_key:
+            error_messages.append("Inserisci la tua chiave OpenAI API")
         if not st.session_state.uploaded_file_list:
             error_messages.append("Seleziona file da caricare")
         if st.session_state.vector_store_name == "":
@@ -634,82 +564,56 @@ def chain_RAG_blocks():
                 # 2. Upload selected documents to temp directory
                 if st.session_state.uploaded_file_list is not None:
                     for uploaded_file in st.session_state.uploaded_file_list:
-                        error_message = ""
-                        try:
-                            temp_file_path = os.path.join(
-                                TMP_DIR.as_posix(), uploaded_file.name
-                            )
-                            with open(temp_file_path, "wb") as temp_file:
-                                temp_file.write(uploaded_file.read())
-                        except Exception as e:
-                            error_message += e
-                    if error_message != "":
-                        st.warning(f"Errori: {error_message}")
-
-                    # 3. Load documents with Langchain loaders
-                    documents = langchain_document_loader()
-                    print(f"Caricato/i {len(documents)} documento/i")
-                    for doc in documents:
-                        print(doc.metadata, doc.page_content[:100])  # Print metadata and first 100 chars
-
-                    # 4. Split documents to chunks
-                    chunks = split_documents_to_chunks(documents)
-                    print(f"Creati {len(chunks)} chunks")
-                    # 5. Embeddings
-                    embeddings = select_embeddings_model()
-                    print("Modello di embedding creato con successo")
-                    test_vector = embeddings.embed_query("Test embedding")
-                    print(f"Generato test embedding: {test_vector[:10]}")  # First 10 dimensions
-
-                    # 6. Create a vectorstore
-                    persist_directory = (
-                        LOCAL_VECTOR_STORE_DIR.as_posix()
-                        + "/"
-                        + st.session_state.vector_store_name
-                    )
-
-                    try:
-                        st.session_state.vector_store = Chroma.from_documents(
-                            documents=chunks,
-                            embedding=embeddings,
-                            persist_directory=persist_directory,
+                        temp_file_path = os.path.join(
+                            TMP_DIR.as_posix(), uploaded_file.name
                         )
-                        st.info(
-                            f"Vectorstore **{st.session_state.vector_store_name}** creato con successo"
-                        )
+                        with open(temp_file_path, "wb") as temp_file:
+                            temp_file.write(uploaded_file.read())
 
-                        # 7. Create retriever
-                        st.session_state.retriever = create_retriever(
-                            vector_store=st.session_state.vector_store,
-                            embeddings=embeddings,
-                            retriever_type=st.session_state.retriever_type,
-                            base_retriever_search_type="similarity",
-                            base_retriever_k=16,
-                            compression_retriever_k=20,
-                            cohere_api_key=st.session_state.cohere_api_key,
-                            cohere_model="rerank-multilingual-v2.0",
-                            cohere_top_n=10,
-                        )
+                # 3. Load documents with Langchain loaders
+                documents = langchain_document_loader()
+                st.write(f"Caricato/i {len(documents)} documento/i")
 
-                        # 8. Create memory and ConversationalRetrievalChain
-                        (
-                            st.session_state.chain,
-                            st.session_state.memory,
-                        ) = create_ConversationalRetrievalChain(
-                            retriever=st.session_state.retriever,
-                            chain_type="stuff",
-                            language=st.session_state.assistant_language,
-                        )
+                # 4. Split documents into chunks
+                chunks = split_documents_to_chunks(documents)
 
-                        # 9. Cclear chat_history
-                        clear_chat_history()
+                # 5. Create embeddings
+                embeddings = select_embeddings_model()
 
-                    except Exception as e:
-                        st.error(e)
+                # 6. Create FAISS vector store
+                st.session_state.vector_store = FAISS.from_documents(chunks, embeddings)
+                st.success(
+                    f"Vectorstore **{st.session_state.vector_store_name}** creato con successo usando FAISS."
+                )
+
+                # 7. Create retriever
+                st.session_state.retriever = create_retriever(
+                    vector_store=st.session_state.vector_store,
+                    embeddings=embeddings,
+                    retriever_type=st.session_state.retriever_type,
+                    base_retriever_search_type="similarity",
+                    base_retriever_k=16,
+                    compression_retriever_k=20,
+                    cohere_api_key=st.session_state.cohere_api_key,
+                    cohere_model="rerank-multilingual-v2.0",
+                    cohere_top_n=10,
+                )
+
+                # 8. Create memory and ConversationalRetrievalChain
+                (
+                    st.session_state.chain,
+                    st.session_state.memory,
+                ) = create_ConversationalRetrievalChain(
+                    retriever=st.session_state.retriever,
+                    chain_type="stuff",
+                    language=st.session_state.assistant_language,
+                )
+
+                # 9. Clear chat history
+                clear_chat_history()
 
             except Exception as error:
                 st.error(f"Si è verificato un errore: {str(error)}")
-
 
 ####################################################################
 #                       Create memory
