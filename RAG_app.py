@@ -105,9 +105,10 @@ list_retriever_types = [
     "Contextual compression",
 ]
 
-TMP_DIR = Path(__file__).resolve().parent.joinpath("data", "tmp")
-LOCAL_VECTOR_STORE_DIR = Path("data/vector_stores")
-LOCAL_VECTOR_STORE_DIR.mkdir(parents=True, exist_ok=True)
+
+#TMP_DIR = Path(__file__).resolve().parent.joinpath("data", "tmp")
+#LOCAL_VECTOR_STORE_DIR = Path("data/vector_stores")
+#LOCAL_VECTOR_STORE_DIR.mkdir(parents=True, exist_ok=True)
 #LOCAL_VECTOR_STORE_DIR = (
 #    Path(__file__).resolve().parent.joinpath("data", "vector_stores")
 #   "/data/vector_stores"
@@ -115,7 +116,9 @@ LOCAL_VECTOR_STORE_DIR.mkdir(parents=True, exist_ok=True)
 #TMP_DIR.mkdir(parents=True, exist_ok=True)
 #LOCAL_VECTOR_STORE_DIR.mkdir(parents=True, exist_ok=True)
 
-selected_vectorstore_path = LOCAL_VECTOR_STORE_DIR / "my_vectorstore"
+root = os.path.abspath(os.path.dirname(__file__))
+LOCAL_VECTOR_STORE_DIR=os.path.join(root,'data/vector_stores')
+TMP_DIR=os.path.join(root,'data/tmp')
 
 ####################################################################
 #            Create app interface with streamlit
