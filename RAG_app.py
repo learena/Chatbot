@@ -185,6 +185,12 @@ def expander_model_parameters(
         )
 
 
+import os
+import streamlit as st
+from chromadb import Chroma
+
+# Assuming select_embeddings_model() and create_retriever() are defined elsewhere
+
 def sidebar_and_documentChooser():
     """Create the sidebar and a tabbed pane: the first tab contains a document chooser (create a new vectorstore);
     the second contains a vectorstore chooser (open an existing vectorstore)."""
@@ -276,87 +282,64 @@ def sidebar_and_documentChooser():
         # Replace tkinter file dialog with Streamlit input for directory name
         st.write("Seleziona un Vectorstore:")
 
-        # Text input for vectorstore path
-        st.session_state.selected_vectorstore_name = st.text_input(
-            "Inserisci il percorso del Vectorstore",
-            placeholder="Inserisci il percorso o nome del Vectorstore salvato",
+        # Here, we add a file uploader instead of just text input
+        uploaded_file = st.file_uploader(
+            "Upload a file from the vectorstore directory",
+            type=["*"]  # Allow any type of file
         )
 
-        if st.button("Carica Vectorstore"):
-            # Check inputs
-            error_messages = []
-            if (
-                not st.session_state.openai_api_key
-                and not st.session_state.google_api_key
-                and not st.session_state.hf_api_key
-            ):
-                error_messages.append(
-                    f"Inserisci la tua chiave {st.session_state.LLM_provider} API"
-                )
+        if uploaded_file:
+            # Extract the directory path from the uploaded file
+            selected_vectorstore_path = os.path.dirname(uploaded_file.name)
+            st.session_state.selected_vectorstore_name = selected_vectorstore_path.split("/")[-1]
 
-            if (
-                st.session_state.retriever_type == list_retriever_types[0]
-                and not st.session_state.cohere_api_key
-            ):
-                error_messages.append(f"Inserisci la tua chiave Cohere API")
-
-            if len(error_messages) == 1:
-                st.session_state.error_message = "Per favore " + error_messages[0] + "."
-                st.warning(st.session_state.error_message)
-            elif len(error_messages) > 1:
-                st.session_state.error_message = (
-                    "Per favore "
-                    + ", ".join(error_messages[:-1])
-                    + ", e "
-                    + error_messages[-1]
-                    + "."
-                )
-                st.warning(st.session_state.error_message)
-
-            # Load Vectorstore if inputs are valid
-            elif st.session_state.selected_vectorstore_name:
+            # Load the Vectorstore
+            with st.spinner("Caricamento vectorstore..."):
                 try:
-                    with st.spinner("Caricamento vectorstore..."):
-                        # Load Chroma vectorstore
-                        embeddings = select_embeddings_model()
-                        st.session_state.vector_store = Chroma(
-                                embedding_function=embeddings,
-                                persist_directory=selected_vectorstore_path,
-                            )
+                    # Assuming select_embeddings_model() is defined elsewhere
+                    embeddings = select_embeddings_model()
 
-                        # Create retriever
-                        st.session_state.retriever = create_retriever(
-                            vector_store=st.session_state.vector_store,
-                            embeddings=embeddings,
-                            retriever_type=st.session_state.retriever_type,
-                            base_retriever_search_type="similarity",
-                            base_retriever_k=16,
-                            compression_retriever_k=20,
-                            cohere_api_key=st.session_state.cohere_api_key,
-                            cohere_model="rerank-multilingual-v2.0",
-                            cohere_top_n=10,
-                        )
+                    # Load Chroma vectorstore using the selected directory
+                    st.session_state.vector_store = Chroma(
+                        embedding_function=embeddings,
+                        persist_directory=selected_vectorstore_path,
+                    )
 
-                        # Create memory and ConversationalRetrievalChain
-                        (
-                            st.session_state.chain,
-                            st.session_state.memory,
-                        ) = create_ConversationalRetrievalChain(
-                            retriever=st.session_state.retriever,
-                            chain_type="stuff",
-                            language=st.session_state.assistant_language,
-                        )
+                    # Create retriever
+                    st.session_state.retriever = create_retriever(
+                        vector_store=st.session_state.vector_store,
+                        embeddings=embeddings,
+                        retriever_type=st.session_state.retriever_type,
+                        base_retriever_search_type="similarity",
+                        base_retriever_k=16,
+                        compression_retriever_k=20,
+                        cohere_api_key=st.session_state.cohere_api_key,
+                        cohere_model="rerank-multilingual-v2.0",
+                        cohere_top_n=10,
+                    )
 
-                        # Clear chat history
-                        clear_chat_history()
+                    # Create memory and ConversationalRetrievalChain
+                    (
+                        st.session_state.chain,
+                        st.session_state.memory,
+                    ) = create_ConversationalRetrievalChain(
+                        retriever=st.session_state.retriever,
+                        chain_type="stuff",
+                        language=st.session_state.assistant_language,
+                    )
 
-                        st.info(
-                            f"**{st.session_state.selected_vectorstore_name}** è stato caricato con successo"
-                        )
+                    # Clear chat history
+                    clear_chat_history()
+
+                    st.info(
+                        f"**{st.session_state.selected_vectorstore_name}** è stato caricato con successo"
+                    )
                 except Exception as e:
-                    st.error(e)
-            else:
-                st.warning("Per favore inserisci un nome valido per il Vectorstore.")
+                    st.error(f"Errore durante il caricamento del Vectorstore: {e}")
+        else:
+            st.warning("Please upload a valid file from your vectorstore directory.")
+
+
 
 ####################################################################
 #        Process documents and create vectorstor (Chroma dB)
