@@ -107,7 +107,8 @@ list_retriever_types = [
 
 TMP_DIR = Path(__file__).resolve().parent.joinpath("data", "tmp")
 LOCAL_VECTOR_STORE_DIR = (
-    Path(__file__).resolve().parent.joinpath("data", "vector_stores")
+#    Path(__file__).resolve().parent.joinpath("data", "vector_stores")
+    "/data/vector_stores"
 )
 TMP_DIR.mkdir(parents=True, exist_ok=True)
 LOCAL_VECTOR_STORE_DIR.mkdir(parents=True, exist_ok=True)
