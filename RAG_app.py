@@ -330,7 +330,7 @@ def sidebar_and_documentChooser():
                         # Load Chroma vectorstore
                         embeddings = select_embeddings_model()
                         selected_vectorstore_path = os.path.join(
-                            LOCAL_VECTOR_STORE_DIR.as_posix(),
+                            LOCAL_VECTOR_STORE_DIR,
                             st.session_state.selected_vectorstore_name,
                         )
                         st.session_state.vector_store = Chroma(
@@ -379,7 +379,7 @@ def sidebar_and_documentChooser():
 ####################################################################
 def delte_temp_files():
     """delete files from the './data/tmp' folder"""
-    files = glob.glob(TMP_DIR.as_posix() + "/*")
+    files = glob.glob(TMP_DIR + "/*")
     for f in files:
         try:
             os.remove(f)
@@ -396,23 +396,23 @@ def langchain_document_loader():
     documents = []
 
     txt_loader = DirectoryLoader(
-        TMP_DIR.as_posix(), glob="**/*.txt", loader_cls=TextLoader, show_progress=True
+        TMP_DIR, glob="**/*.txt", loader_cls=TextLoader, show_progress=True
     )
     documents.extend(txt_loader.load())
 
     pdf_loader = DirectoryLoader(
-        TMP_DIR.as_posix(), glob="**/*.pdf", loader_cls=PyPDFLoader, show_progress=True
+        TMP_DIR, glob="**/*.pdf", loader_cls=PyPDFLoader, show_progress=True
     )
     documents.extend(pdf_loader.load())
 
     csv_loader = DirectoryLoader(
-        TMP_DIR.as_posix(), glob="**/*.csv", loader_cls=CSVLoader, show_progress=True,
+        TMP_DIR, glob="**/*.csv", loader_cls=CSVLoader, show_progress=True,
         loader_kwargs={"encoding":"utf8"}
     )
     documents.extend(csv_loader.load())
 
     doc_loader = DirectoryLoader(
-        TMP_DIR.as_posix(),
+        TMP_DIR,
         glob="**/*.docx",
         loader_cls=Docx2txtLoader,
         show_progress=True,
@@ -656,7 +656,7 @@ def chain_RAG_blocks():
                         error_message = ""
                         try:
                             temp_file_path = os.path.join(
-                                TMP_DIR.as_posix(), uploaded_file.name
+                                TMP_DIR, uploaded_file.name
                             )
                             with open(temp_file_path, "wb") as temp_file:
                                 temp_file.write(uploaded_file.read())
