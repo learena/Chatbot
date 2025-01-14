@@ -106,10 +106,12 @@ list_retriever_types = [
 ]
 
 TMP_DIR = Path(__file__).resolve().parent.joinpath("data", "tmp")
-LOCAL_VECTOR_STORE_DIR = (
+LOCAL_VECTOR_STORE_DIR = Path("data/vector_stores")
+LOCAL_VECTOR_STORE_DIR.mkdir(parents=True, exist_ok=True)
+#LOCAL_VECTOR_STORE_DIR = (
 #    Path(__file__).resolve().parent.joinpath("data", "vector_stores")
-    "/data/vector_stores"
-)
+#   "/data/vector_stores"
+#)
 #TMP_DIR.mkdir(parents=True, exist_ok=True)
 #LOCAL_VECTOR_STORE_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -675,7 +677,7 @@ def chain_RAG_blocks():
 
                     # 6. Create a vectorstore
                     persist_directory = (
-                        LOCAL_VECTOR_STORE_DIR
+                        LOCAL_VECTOR_STORE_DIR.as_posix()
                         + "/"
                         + st.session_state.vector_store_name
                     )
