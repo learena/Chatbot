@@ -8,6 +8,8 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 
 import os, glob
 from pathlib import Path
+import sqlite3
+print("SQLite version:", sqlite3.sqlite_version)
 
 # Import openai and google_genai as main LLM services
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
