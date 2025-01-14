@@ -30,6 +30,7 @@ docx2txt==0.8
 python-dotenv
 exceptiongroup==1.2.0
 executing==2.0.1
+faiss-cpu
 fastapi==0.109.2
 fastavro==1.9.3
 filelock==3.13.1
