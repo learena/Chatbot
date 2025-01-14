@@ -9,6 +9,8 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 import os, glob
 from pathlib import Path
 import sqlite3
+
+os.environ["PATH"] = os.path.join(os.path.dirname(__file__), "bin") + ":" + os.environ["PATH"]
 print("SQLite version:", sqlite3.sqlite_version)
 
 # Import openai and google_genai as main LLM services
